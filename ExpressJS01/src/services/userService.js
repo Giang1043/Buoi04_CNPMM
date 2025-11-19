@@ -6,27 +6,66 @@ const saltRounds = 10;
 
 const createUserService = async (name, email, password) => {
   try {
+    // Validate input
+    if (!email || !password || !name) {
+      return {
+        EC: 1,
+        EM: "Email, password, name là bắt buộc"
+      };
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return {
+        EC: 1,
+        EM: "Email không hợp lệ"
+      };
+    }
+
+    // Validate password strength (min 8 chars)
+    if (password.length < 8) {
+      return {
+        EC: 1,
+        EM: "Mật khẩu phải có ít nhất 8 ký tự"
+      };
+    }
+
     // check user exist
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
     if (user) {
-      console.log(`>>> user exist, chọn 1 email khác: ${email}`);
-      return null;
+      return {
+        EC: 1,
+        EM: "Email đã được đăng ký, vui lòng chọn email khác"
+      };
     }
 
     // hash user password
     const hashPassword = await bcrypt.hash(password, saltRounds);
+    
     // save user to database
     let result = await User.create({
-      name: name,
-      email: email,
+      name: name.trim(),
+      email: email.toLowerCase().trim(),
       password: hashPassword,
       role: 'User'
     })
-    return result;
+
+    return {
+      EC: 0,
+      EM: "Đăng ký tài khoản thành công",
+      user: {
+        email: result.email,
+        name: result.name
+      }
+    };
 
   } catch (error) {
-    console.log(error);
-    return null;
+    console.log(">>> createUserService error: ", error);
+    return {
+      EC: 2,
+      EM: "Lỗi server khi tạo tài khoản"
+    };
   }
 }
 
@@ -94,10 +133,3 @@ module.exports = {
   loginService,
   getUserService
 }
-// Placeholder service
-exports.list = () => {
-  return [
-    { id: 1, name: 'Alice', email: 'alice@example.com' },
-    { id: 2, name: 'Bob', email: 'bob@example.com' },
-  ];
-};
